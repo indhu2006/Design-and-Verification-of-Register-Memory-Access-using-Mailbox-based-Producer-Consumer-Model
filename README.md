@@ -59,6 +59,61 @@ This experiment demonstrates **inter-process synchronization and data transfer**
 ---
 
 ##  SystemVerilog Code
+```
+module reg_memory_mailbox;
+
+  typedef struct {
+    int addr;
+    int data;
+    bit wr; // 1 = write, 0 = read
+  } packet_t;
+
+  mailbox mbox = new();
+
+  int memory [0:15];
+
+  initial begin
+    fork
+      producer();
+      consumer();
+    join
+  end
+task producer();
+    packet_t pkt;
+    int i;
+    $display("\n=== PRODUCER STARTED ===");
+    for (i = 0; i < 5; i++) begin
+      pkt.addr = $urandom_range(0, 15);
+      pkt.data = $urandom_range(0, 255);
+      pkt.wr   = $urandom_range(0, 1);
+      mbox.put(pkt);
+
+$display("[%0t] PRODUCER: Sent packet -> Addr=%0d Data=%0d WR=%0b",$time, pkt.addr, pkt.data, pkt.wr);
+
+      #5;
+    end
+  endtask
+task consumer();
+    packet_t rcv;
+    int rd_data;
+    $display("\n=== CONSUMER STARTED ===");
+    forever 
+      begin
+      mbox.get(rcv);
+      if (rcv.wr) 
+        begin
+        memory[rcv.addr] = rcv.data;
+        $display("[%0t] CONSUMER: WRITE -> Addr=%0d Data=%0d",$time, rcv.addr, rcv.data);
+      end 
+    else 
+        begin
+        rd_data = memory[rcv.addr];
+        $display("[%0t] CONSUMER: READ  -> Addr=%0d Data=%0d",$time, rcv.addr, rd_data);
+      end
+      #3;
+    end
+endtask     endmodule
+```
 
 ### Design File — `register_memory.sv`
 ```systemverilog
@@ -106,7 +161,8 @@ endmodule
 ```
 ### Simulation Output
 
------ Paste the Screenshot of the output here 
+<img width="1920" height="1080" alt="Screenshot 2025-11-04 154753" src="https://github.com/user-attachments/assets/28a9b490-4fa5-4f15-8236-2eca8d9857e2" />
+ 
 
 
 ### Result
